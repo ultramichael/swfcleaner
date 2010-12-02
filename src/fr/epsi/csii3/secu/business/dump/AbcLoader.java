@@ -10,8 +10,11 @@ package fr.epsi.csii3.secu.business.dump;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.HashMap;
+import java.util.Map;
 
 public class AbcLoader
 {
@@ -31,11 +34,14 @@ public class AbcLoader
 
 	public MethodInfo[] methods;
 	public String[] instanceNames;
+	
+	public Map<MethodInfo,byte[]> methodBodies;
 
 	public AbcLoader(byte[] abc)
 	{
 		this.abc = abc;
 		this.out = new ByteArrayOutputStream();
+		methodBodies = new HashMap<AbcLoader.MethodInfo, byte[]>();
 	}
 
 	// Copies all read input since last copyInput/discardInput call.
@@ -66,7 +72,8 @@ public class AbcLoader
 		readMetaData();
 		readClasses();
 		readScripts();
-		readBodies();
+		//readBodies();
+		printBodies();
 		copyInput();
 	}
 
@@ -780,7 +787,13 @@ public class AbcLoader
 			offset += codeLength;
 
 			MethodInfo mi = methods[methodIndex];
-
+			// TWEAK
+			byte[] body = new byte[codeLength];
+			for (int j = functionStartOffset; j < functionStartOffset+codeLength; j++) {
+				body[j-functionStartOffset] = this.abc[j];				
+			}
+			this.methodBodies.put(mi,body);
+			// /TWEAK
 			copyInput();
 
 			int exCount = (int) readU32();
@@ -956,4 +969,531 @@ public class AbcLoader
 			return this.name;
 		}
 	}
+	
+	
+	
+	
+	
+	
+    void printBodies()
+    {
+    	PrintStream out = System.out;
+        long n = readU32();
+        out.println(n + " Method Bodies");
+        for (int i = 0; i < n; i++)
+        {
+            int start = offset;
+            int methodIndex = (int)readU32();
+            int maxStack = (int)readU32();
+            int localCount = (int)readU32();
+            int initScopeDepth = (int)readU32();
+            int maxScopeDepth = (int)readU32();
+            int codeLength = (int)readU32();
+            
+            MethodInfo mi = methods[methodIndex];
+            out.print(traitKinds[mi.kind] + " ");
+            out.print(mi.className + "::" + mi.name + "(");
+            for (int x = 0; x < mi.paramCount - 1; x++)
+            {
+                out.print(multiNameConstants[mi.params[x]].toString() + ", ");
+            }
+            if (mi.paramCount > 0)
+                out.print(multiNameConstants[mi.params[mi.paramCount - 1]].toString());
+            out.print("):");
+            out.println(multiNameConstants[mi.returnType].toString());
+            out.print("maxStack:" + maxStack + " localCount:" + localCount + " ");
+            out.println("initScopeDepth:" + initScopeDepth + " maxScopeDepth:" + maxScopeDepth);
+				
+            LabelMgr labels = new LabelMgr();
+            int stopAt = codeLength + offset;
+            while (offset < stopAt)
+            {
+                String s = "";
+                start = offset;
+                int opcode = abc[offset++] & 0xFF;
+					
+                if (opcode == OP_label || labels.hasLabelAt(offset - 1)) 
+                {
+                    s = labels.getLabelAt(offset - 1) + ":";
+                    while (s.length() < 4)
+                        s += " ";
+                }
+                else
+                    s = "    ";
+					
+					
+                s += opNames[opcode];
+                s += opNames[opcode].length() < 8 ? "\t\t" : "\t";
+					
+                switch (opcode)
+                {
+                case OP_debugfile:
+                case OP_pushstring:
+                    s += '"' + stringConstants[(int)readU32()].replaceAll("\n","\\n").replaceAll("\t","\\t") + '"';
+                    break;
+                case OP_pushnamespace:
+                    s += namespaceConstants[(int)readU32()];
+                    break;
+                case OP_pushint:
+                    int k = intConstants[(int)readU32()];
+                    s += k + "\t// 0x" + Integer.toHexString(k);
+                    break;
+                case OP_pushuint:
+                    long u = uintConstants[(int)readU32()];
+                    s += u + "\t// 0x" + Long.toHexString(u);
+                    break;
+                case OP_pushdouble:
+                    int f = (int)readU32();
+                    s += "floatConstant" + f;
+                    break;
+                case OP_getsuper: 
+                case OP_setsuper: 
+                case OP_getproperty: 
+                case OP_initproperty: 
+                case OP_setproperty: 
+                case OP_getlex: 
+                case OP_findpropstrict: 
+                case OP_findproperty:
+                case OP_finddef:
+                case OP_deleteproperty: 
+                case OP_istype: 
+                case OP_coerce: 
+                case OP_astype: 
+                case OP_getdescendants:
+                    s += multiNameConstants[(int)readU32()];
+                    break;
+                case OP_constructprop:
+                case OP_callproperty:
+                case OP_callproplex:
+                case OP_callsuper:
+                case OP_callsupervoid:
+                case OP_callpropvoid:
+                    s += multiNameConstants[(int)readU32()];
+                    s += " (" + readU32() + ")";
+                    break;
+                case OP_newfunction:
+                    int method_id = (int)readU32();
+                    s += methods[method_id].name;
+                    // abc.methods[method_id].anon = true  (do later?)
+                    break;
+                case OP_callstatic:
+                    s += methods[(int)readU32()].name;
+                    s += " (" + readU32() + ")";
+                    break;
+                case OP_newclass: 
+                    s += instanceNames[(int)readU32()];
+                    break;
+                case OP_lookupswitch:
+                    int pos = offset - 1;
+                    int target = pos + readS24();
+                    int maxindex = (int)readU32();
+                    s += "default:" + labels.getLabelAt(target); // target + "("+(target-pos)+")"
+                    s += " maxcase:" + Integer.toString(maxindex);
+                    for (int m = 0; m <= maxindex; m++) 
+                    {
+                        target = pos + readS24();
+                        s += " " + labels.getLabelAt(target); // target + "("+(target-pos)+")"
+                    }
+                    break;
+                case OP_jump:
+                case OP_iftrue:		case OP_iffalse:
+                case OP_ifeq:		case OP_ifne:
+                case OP_ifge:		case OP_ifnge:
+                case OP_ifgt:		case OP_ifngt:
+                case OP_ifle:		case OP_ifnle:
+                case OP_iflt:		case OP_ifnlt:
+                case OP_ifstricteq:	case OP_ifstrictne:
+                    int delta = readS24();
+                    int targ = offset + delta;
+                    //s += target + " ("+offset+")"
+                    s += labels.getLabelAt(targ);
+                    if (!(labels.hasLabelAt(offset)))
+                        s += "\n";
+                    break;
+                case OP_inclocal:
+                case OP_declocal:
+                case OP_inclocal_i:
+                case OP_declocal_i:
+                case OP_getlocal:
+                case OP_kill:
+                case OP_setlocal:
+                case OP_debugline:
+                case OP_getglobalslot:
+                case OP_getslot:
+                case OP_setglobalslot:
+                case OP_setslot:
+                case OP_pushshort:
+                case OP_newcatch:
+                    s += readU32();
+                    break;
+                case OP_debug:
+                    s += Integer.toString(abc[offset++] & 0xFF); 
+                    s += " " + readU32();
+                    s += " " + Integer.toString(abc[offset++] & 0xFF);
+                    s += " " + readU32();
+                    break;
+                case OP_newobject:
+                    s += "{" + readU32() + "}";
+                    break;
+                case OP_newarray:
+                    s += "[" + readU32() + "]";
+                    break;
+                case OP_call:
+                case OP_construct:
+                case OP_constructsuper:
+                    s += "(" + readU32() + ")";
+                    break;
+                case OP_pushbyte:
+                case OP_getscopeobject:
+                    s += abc[offset++];
+                    break;
+                case OP_hasnext2:
+                    s += readU32() + " " + readU32();
+                default:
+                    /*if (opNames[opcode] == ("0x"+opcode.toString(16).toUpperCase()))
+                      s += " UNKNOWN OPCODE"*/
+                    break;
+                }
+                out.println(s);
+            }
+            int exCount = (int)readU32();
+            out.println(exCount + " Extras");
+            for (int j = 0; j < exCount; j++)
+            {
+                start = offset;
+                int from = (int)readU32();
+                int to = (int)readU32();
+                int target = (int)readU32();
+                int typeIndex = (int)readU32();
+                int nameIndex = (int)readU32();
+                out.print(multiNameConstants[nameIndex] + " ");
+                out.print("type:" + multiNameConstants[typeIndex] + " from:" + from + " ");
+                out.println("to:" + to + " target:" + target);
+            }
+            int numTraits = (int)readU32(); // number of traits
+            out.println(numTraits + " Traits Entries");
+            for (int j = 0; j < numTraits; j++)
+            {
+                start = offset;
+                String s = multiNameConstants[(int)readU32()].toString(); // eat trait name;
+                int b =  abc[offset++];
+                int kind = b & 0xf;
+                switch (kind)
+                {
+                case 0x00:	// slot
+                case 0x06:	// const
+                    readU32();	// id
+                    readU32();	// type
+                    int index = (int)readU32();	// index;
+                    if (index != 0)
+                        offset++;	// kind
+                    break;
+                case 0x04:	// class
+                    readU32();	// id
+                    readU32();	// value;
+                    break;
+                default:
+                    readU32();	// id
+                    readU32();  // method
+                    break;
+                }
+                if ((b >> 4 & 0x4) == 0x4)
+                {
+                    int val = (int)readU32();	// metadata count
+                    for (int k = 0; k < val; k++)
+                    {
+                        readU32();	// metadata
+                    }
+                }
+                out.println(s);
+            }
+            out.println("");
+        }
+    }
+    
+    class LabelMgr
+    {
+        int index = 0;
+				
+        HashMap<String, Integer> labels;
+				
+        public LabelMgr()
+        {
+            labels = new HashMap<String, Integer>();
+        }
+				
+        public String getLabelAt(int offset)
+        {
+            String key = Integer.toString(offset);
+            if (!labels.containsKey(key))
+                labels.put(key, new Integer(index++));
+            return "L" + labels.get(key).toString();
+        }
+				
+        public boolean hasLabelAt(int offset)
+        {
+            String key = Integer.toString(offset);
+            return labels.containsKey(key);
+        }
+    }
+    
+    String[] opNames = {
+    	    "OP_0x00       ",
+    	    "bkpt          ",
+    	    "nop           ",
+    	    "throw         ",
+    	    "getsuper      ",
+    	    "setsuper      ",
+    	    "dxns          ",
+    	    "dxnslate      ",
+    	    "kill          ",
+    	    "label         ",
+    	    "OP_0x0A       ",
+    	    "OP_0x0B       ",
+    	    "ifnlt         ",
+    	    "ifnle         ",
+    	    "ifngt         ",
+    	    "ifnge         ",
+    	    "jump          ",
+    	    "iftrue        ",
+    	    "iffalse       ",
+    	    "ifeq          ",
+    	    "ifne          ",
+    	    "iflt          ",
+    	    "ifle          ",
+    	    "ifgt          ",
+    	    "ifge          ",
+    	    "ifstricteq    ",
+    	    "ifstrictne    ",
+    	    "lookupswitch  ",
+    	    "pushwith      ",
+    	    "popscope      ",
+    	    "nextname      ",
+    	    "hasnext       ",
+    	    "pushnull      ",
+    	    "pushundefined ",
+    	    "pushconstant  ",
+    	    "nextvalue     ",
+    	    "pushbyte      ",
+    	    "pushshort     ",
+    	    "pushtrue      ",
+    	    "pushfalse     ",
+    	    "pushnan       ",
+    	    "pop           ",
+    	    "dup           ",
+    	    "swap          ",
+    	    "pushstring    ",
+    	    "pushint       ",
+    	    "pushuint      ",
+    	    "pushdouble    ",
+    	    "pushscope     ",
+    	    "pushnamespace ",
+    	    "hasnext2      ",
+    	    "OP_0x33       ",
+    	    "OP_0x34       ",
+    	    "OP_0x35       ",
+    	    "OP_0x36       ",
+    	    "OP_0x37       ",
+    	    "OP_0x38       ",
+    	    "OP_0x39       ",
+    	    "OP_0x3A       ",
+    	    "OP_0x3B       ",
+    	    "OP_0x3C       ",
+    	    "OP_0x3D       ",
+    	    "OP_0x3E       ",
+    	    "OP_0x3F       ",
+    	    "newfunction   ",
+    	    "call          ",
+    	    "construct     ",
+    	    "callmethod    ",
+    	    "callstatic    ",
+    	    "callsuper     ",
+    	    "callproperty  ",
+    	    "returnvoid    ",
+    	    "returnvalue   ",
+    	    "constructsuper",
+    	    "constructprop ",
+    	    "callsuperid   ",
+    	    "callproplex   ",
+    	    "callinterface ",
+    	    "callsupervoid ",
+    	    "callpropvoid  ",
+    	    "OP_0x50       ",
+    	    "OP_0x51       ",
+    	    "OP_0x52       ",
+    	    "OP_0x53       ",
+    	    "OP_0x54       ",
+    	    "newobject     ",
+    	    "newarray      ",
+    	    "newactivation ",
+    	    "newclass      ",
+    	    "getdescendants",
+    	    "newcatch      ",
+    	    "OP_0x5B       ",
+    	    "OP_0x5C       ",
+    	    "findpropstrict",
+    	    "findproperty  ",
+    	    "finddef       ",
+    	    "getlex        ",
+    	    "setproperty   ",
+    	    "getlocal      ",
+    	    "setlocal      ",
+    	    "getglobalscope",
+    	    "getscopeobject",
+    	    "getproperty   ",
+    	    "OP_0x67       ",
+    	    "initproperty  ",
+    	    "OP_0x69       ",
+    	    "deleteproperty",
+    	    "OP_0x6A       ",
+    	    "getslot       ",
+    	    "setslot       ",
+    	    "getglobalslot ",
+    	    "setglobalslot ",
+    	    "convert_s     ",
+    	    "esc_xelem     ",
+    	    "esc_xattr     ",
+    	    "convert_i     ",
+    	    "convert_u     ",
+    	    "convert_d     ",
+    	    "convert_b     ",
+    	    "convert_o     ",
+    	    "checkfilter   ",
+    	    "OP_0x79       ",
+    	    "OP_0x7A       ",
+    	    "OP_0x7B       ",
+    	    "OP_0x7C       ",
+    	    "OP_0x7D       ",
+    	    "OP_0x7E       ",
+    	    "OP_0x7F       ",
+    	    "coerce        ",
+    	    "coerce_b      ",
+    	    "coerce_a      ",
+    	    "coerce_i      ",
+    	    "coerce_d      ",
+    	    "coerce_s      ",
+    	    "astype        ",
+    	    "astypelate    ",
+    	    "coerce_u      ",
+    	    "coerce_o      ",
+    	    "OP_0x8A       ",
+    	    "OP_0x8B       ",
+    	    "OP_0x8C       ",
+    	    "OP_0x8D       ",
+    	    "OP_0x8E       ",
+    	    "OP_0x8F       ",
+    	    "negate        ",
+    	    "increment     ",
+    	    "inclocal      ",
+    	    "decrement     ",
+    	    "declocal      ",
+    	    "typeof        ",
+    	    "not           ",
+    	    "bitnot        ",
+    	    "OP_0x98       ",
+    	    "OP_0x99       ",
+    	    "concat        ",
+    	    "add_d         ",
+    	    "OP_0x9C       ",
+    	    "OP_0x9D       ",
+    	    "OP_0x9E       ",
+    	    "OP_0x9F       ",
+    	    "add           ",
+    	    "subtract      ",
+    	    "multiply      ",
+    	    "divide        ",
+    	    "modulo        ",
+    	    "lshift        ",
+    	    "rshift        ",
+    	    "urshift       ",
+    	    "bitand        ",
+    	    "bitor         ",
+    	    "bitxor        ",
+    	    "equals        ",
+    	    "strictequals  ",
+    	    "lessthan      ",
+    	    "lessequals    ",
+    	    "greaterthan   ",
+    	    "greaterequals ",
+    	    "instanceof    ",
+    	    "istype        ",
+    	    "istypelate    ",
+    	    "in            ",
+    	    "OP_0xB5       ",
+    	    "OP_0xB6       ",
+    	    "OP_0xB7       ",
+    	    "OP_0xB8       ",
+    	    "OP_0xB9       ",
+    	    "OP_0xBA       ",
+    	    "OP_0xBB       ",
+    	    "OP_0xBC       ",
+    	    "OP_0xBD       ",
+    	    "OP_0xBE       ",
+    	    "OP_0xBF       ",
+    	    "increment_i   ",
+    	    "decrement_i   ",
+    	    "inclocal_i    ",
+    	    "declocal_i    ",
+    	    "negate_i      ",
+    	    "add_i         ",
+    	    "subtract_i    ",
+    	    "multiply_i    ",
+    	    "OP_0xC8       ",
+    	    "OP_0xC9       ",
+    	    "OP_0xCA       ",
+    	    "OP_0xCB       ",
+    	    "OP_0xCC       ",
+    	    "OP_0xCD       ",
+    	    "OP_0xCE       ",
+    	    "OP_0xCF       ",
+    	    "getlocal0     ",
+    	    "getlocal1     ",
+    	    "getlocal2     ",
+    	    "getlocal3     ",
+    	    "setlocal0     ",
+    	    "setlocal1     ",
+    	    "setlocal2     ",
+    	    "setlocal3     ",
+    	    "OP_0xD8       ",
+    	    "OP_0xD9       ",
+    	    "OP_0xDA       ",
+    	    "OP_0xDB       ",
+    	    "OP_0xDC       ",
+    	    "OP_0xDD       ",
+    	    "OP_0xDE       ",
+    	    "OP_0xDF       ",
+    	    "OP_0xE0       ",
+    	    "OP_0xE1       ",
+    	    "OP_0xE2       ",
+    	    "OP_0xE3       ",
+    	    "OP_0xE4       ",
+    	    "OP_0xE5       ",
+    	    "OP_0xE6       ",
+    	    "OP_0xE7       ",
+    	    "OP_0xE8       ",
+    	    "OP_0xE9       ",
+    	    "OP_0xEA       ",
+    	    "OP_0xEB       ",
+    	    "OP_0xEC       ",
+    	    "OP_0xED       ",
+    	    "OP_0xEE       ",
+    	    "debug         ",
+    	    "debugline     ",
+    	    "debugfile     ",
+    	    "bkptline      ",
+    	    "timestamp     ",
+    	    "OP_0xF4       ",
+    	    "verifypass    ",
+    	    "alloc         ",
+    	    "mark          ",
+    	    "wb            ",
+    	    "prologue      ",
+    	    "sendenter     ",
+    	    "doubletoatom  ",
+    	    "sweep         ",
+    	    "codegenop     ",
+    	    "verifyop      ",
+    	    "decode        "
+        };
+        
 }
