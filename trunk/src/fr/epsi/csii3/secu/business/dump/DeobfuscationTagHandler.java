@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
+import macromedia.abc.BytecodeBuffer;
+import macromedia.abc.Decoder;
+import macromedia.abc.DecoderException;
 import flash.swf.Header;
 import flash.swf.TagDecoder;
 import flash.swf.TagHandler;
@@ -47,6 +50,11 @@ public class DeobfuscationTagHandler extends TagHandler {
 		if(l.methods != null) {
 			for(MethodInfo m : l.methods) {
 				System.out.println('<'+m.getClassName()+">"+m.getName());
+
+				/*String body = "";
+				for(byte b : l.methodBodies.get(m))
+					body += Integer.toHexString(Integer.parseInt(Byte.toString(b)) + 128) + " ";
+				System.out.println("    "+body);*/
 				//System.out.println(m.getAbcCode());
 			}
 		}
