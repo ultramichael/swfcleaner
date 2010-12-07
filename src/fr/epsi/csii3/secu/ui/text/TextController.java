@@ -7,7 +7,7 @@ import fr.epsi.csii3.secu.ui.generic.AbstractController;
 
 public class TextController extends AbstractController implements KeyListener {
 	public TextController() {
-		super(new TextView(), new TextModel());
+		super(new TextView());
 		
 		((TextView)view).getTextArea().addKeyListener(this);
 	}
@@ -22,6 +22,6 @@ public class TextController extends AbstractController implements KeyListener {
 	
 	@Override
 	public void keyTyped(KeyEvent kEvt) {
-		((TextModel)model).setText(((TextModel)model).getText()+kEvt.getKeyChar());
+		//((TextModel)model).setText(((TextModel)model).getText()+kEvt.getKeyChar());
 	}
 }

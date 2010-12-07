@@ -6,17 +6,13 @@ public class TextModel extends AbstractModel {
 	
 	private String text;
 
-	@Override
-	public void notifyChanges() {
-		
-	}
-
 	public String getText() {
 		return this.text;
 	}
 
 	public void setText(String text) {
 		this.text = text;
+		super.notifyChanges();
 	}
 
 }
