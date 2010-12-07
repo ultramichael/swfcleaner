@@ -12,6 +12,8 @@ public class TextView extends AbstractView {
 	private JTextArea textArea;
 	
 	public TextView() {
+		this.model = new TextModel();
+		this.model.addModelChangedListener(this);
 		setLayout(new GridLayout(1,1));
 		this.textArea = new JTextArea();
 		JScrollPane scrollPane = new JScrollPane(this.textArea);
@@ -20,5 +22,10 @@ public class TextView extends AbstractView {
 
 	public JTextArea getTextArea() {
 		return this.textArea;
+	}
+
+	@Override
+	public void modelHasChanged() {
+		this.textArea.setText(((TextModel)model).getText());
 	}
 }

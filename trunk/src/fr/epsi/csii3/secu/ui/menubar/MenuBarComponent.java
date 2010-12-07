@@ -27,6 +27,7 @@ import fr.epsi.csii3.secu.Bytecode2Src;
 import fr.epsi.csii3.secu.business.dump.AbcLoader;
 import fr.epsi.csii3.secu.business.dump.DeobfuscationTagHandler;
 import fr.epsi.csii3.secu.business.dump.AbcLoader.MethodInfo;
+import fr.epsi.csii3.secu.ui.MainFrame;
 
 public class MenuBarComponent extends JMenuBar {
 	public MenuBarComponent() {
@@ -43,7 +44,7 @@ public class MenuBarComponent extends JMenuBar {
 					loadFile(selectedFile);
 				}*/
 				// Testing
-				loadFile2(null);
+				loadFile2();
 			}
 		});
 		fileMenu.add(openItem);
@@ -80,10 +81,10 @@ public class MenuBarComponent extends JMenuBar {
 		}
 	}
 	
-	private void loadFile2(File f) {
+	private void loadFile2() {
 		try {
 			URL url = Bytecode2Src.class.getClass().getResource("/fr/epsi/csii3/secu/resources/Tetris.swf");
-			new DeobfuscationTagHandler().parseSwf(url);
+			MainFrame.loadData(new DeobfuscationTagHandler().parseSwf(url));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

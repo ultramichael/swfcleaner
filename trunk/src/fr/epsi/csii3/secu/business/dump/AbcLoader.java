@@ -36,12 +36,14 @@ public class AbcLoader
 	public String[] instanceNames;
 	
 	public Map<MethodInfo,byte[]> methodBodies;
+	public Map<MethodInfo, String> methodBodiesStrings;
 
 	public AbcLoader(byte[] abc)
 	{
 		this.abc = abc;
 		this.out = new ByteArrayOutputStream();
 		methodBodies = new HashMap<AbcLoader.MethodInfo, byte[]>();
+		methodBodiesStrings = new HashMap<MethodInfo, String>();
 	}
 
 	// Copies all read input since last copyInput/discardInput call.
@@ -977,9 +979,9 @@ public class AbcLoader
 	
     void printBodies()
     {
-    	PrintStream out = System.out;
+    	//PrintStream out = System.out;
         long n = readU32();
-        out.println(n + " Method Bodies");
+        //out.println(n + " Method Bodies");
         for (int i = 0; i < n; i++)
         {
             int start = offset;
@@ -991,7 +993,7 @@ public class AbcLoader
             int codeLength = (int)readU32();
             
             MethodInfo mi = methods[methodIndex];
-            out.print(traitKinds[mi.kind] + " ");
+            /*out.print(traitKinds[mi.kind] + " ");
             out.print(mi.className + "::" + mi.name + "(");
             for (int x = 0; x < mi.paramCount - 1; x++)
             {
@@ -1003,9 +1005,19 @@ public class AbcLoader
             out.println(multiNameConstants[mi.returnType].toString());
             out.print("maxStack:" + maxStack + " localCount:" + localCount + " ");
             out.println("initScopeDepth:" + initScopeDepth + " maxScopeDepth:" + maxScopeDepth);
-				
+			*/
+            
             LabelMgr labels = new LabelMgr();
             int stopAt = codeLength + offset;
+            
+            // Tweak
+            byte[] body = new byte[stopAt-offset];
+            for(int o = offset; o<stopAt;o++)
+            	body[o-offset] = abc[o];
+            methodBodies.put(mi, body);
+            String bodyStr = new String();
+            // /Tweak
+            
             while (offset < stopAt)
             {
                 String s = "";
@@ -1154,10 +1166,16 @@ public class AbcLoader
                       s += " UNKNOWN OPCODE"*/
                     break;
                 }
-                out.println(s);
+                //out.println(s);
+                bodyStr += s + "\n";
             }
+            
+            // Tweak
+            methodBodiesStrings.put(mi, bodyStr);
+            // /Tweak
+            
             int exCount = (int)readU32();
-            out.println(exCount + " Extras");
+            //out.println(exCount + " Extras");
             for (int j = 0; j < exCount; j++)
             {
                 start = offset;
@@ -1166,12 +1184,12 @@ public class AbcLoader
                 int target = (int)readU32();
                 int typeIndex = (int)readU32();
                 int nameIndex = (int)readU32();
-                out.print(multiNameConstants[nameIndex] + " ");
+                /*out.print(multiNameConstants[nameIndex] + " ");
                 out.print("type:" + multiNameConstants[typeIndex] + " from:" + from + " ");
-                out.println("to:" + to + " target:" + target);
+                out.println("to:" + to + " target:" + target);*/
             }
             int numTraits = (int)readU32(); // number of traits
-            out.println(numTraits + " Traits Entries");
+            //out.println(numTraits + " Traits Entries");
             for (int j = 0; j < numTraits; j++)
             {
                 start = offset;
@@ -1205,9 +1223,9 @@ public class AbcLoader
                         readU32();	// metadata
                     }
                 }
-                out.println(s);
+                //out.println(s);
             }
-            out.println("");
+            //out.println("");
         }
     }
     
