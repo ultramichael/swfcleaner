@@ -41,6 +41,7 @@ public class MainFrame extends JFrame {
 		treeMenu = new TreeController();
 		dataListeners.add(treeMenu);
 		
+		// TODO : stuff like treeMenu.addABCListener(left)
 		left = new TextControllerLeft();
 		currentMethodListeners.add((CurrentMethodChangedListener) left);
 		
