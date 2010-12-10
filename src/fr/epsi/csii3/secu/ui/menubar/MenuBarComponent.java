@@ -7,7 +7,6 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -18,17 +17,12 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 
-import flash.swf.Header;
-import flash.swf.TagDecoder;
-import flash.swf.TagHandler;
-import flash.swf.tags.DoABC;
 import flash.swf.tools.SwfxPrinter;
 import fr.epsi.csii3.secu.Bytecode2Src;
-import fr.epsi.csii3.secu.business.dump.AbcLoader;
 import fr.epsi.csii3.secu.business.dump.DeobfuscationTagHandler;
-import fr.epsi.csii3.secu.business.dump.AbcLoader.MethodInfo;
 import fr.epsi.csii3.secu.ui.MainFrame;
 
+@SuppressWarnings("serial")
 public class MenuBarComponent extends JMenuBar {
 	public MenuBarComponent() {
 		JMenu fileMenu = new JMenu("Fichier");

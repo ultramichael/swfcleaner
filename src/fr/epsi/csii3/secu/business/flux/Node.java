@@ -51,7 +51,6 @@ public class Node {
 		syntheticNodes = new ArrayList<Node>();
 		syntheticNodes.add(syntheticRoot);
 		this.buildSynthetic(null);
-		//System.out.println("Done : "+syntheticRoot.sons.get(0).sons.size());
 		return syntheticRoot;
 	}
 	
@@ -63,7 +62,6 @@ public class Node {
 		else if(this.sons.size()==1) {
 			Node son = this.sons.get(0);
 			if(!son.equals(stop)) {
-				//this.addSon(son);
 				addSonTo(this, son);
 				son.buildSynthetic(stop);
 				// TODO : null ?
@@ -77,13 +75,11 @@ public class Node {
 			Node cv = findConvergence();
 			List<Node> lasts = new ArrayList<Node>();
 			for(Node son : this.sons) {
-				//this.addSon(son);
 				addSonTo(this, son);
 				if(!son.equals(cv))
 					lasts.add(son.buildSynthetic(cv));
 			}
 			for(Node l : lasts) {
-				//l.addSon(cv);
 				addSonTo(l, cv);
 			}
 			return cv;
@@ -93,7 +89,6 @@ public class Node {
 	private static Node syntheticRoot;
 	private static List<Node> syntheticNodes;
 	private static void addSonTo(Node n, Node s) {
-		//System.out.println("Add son "+s.line+" to "+n.line+" ("+syntheticRoot.line+")");
 		Node newSon = new Node(s.line, s.offset);
 		syntheticNodes.add(newSon);
 		for(Node node : syntheticNodes) {
@@ -122,7 +117,6 @@ public class Node {
 			Node oneSon = this.sons.get(0);
 			Node twoSon = this.sons.get(1);
 			while(!browsedSonsOne.contains(twoSon) && !browsedSonsTwo.contains(oneSon)) {
-				//System.out.println(oneSon.offset+"("+oneSon.sons.size()+"),"+twoSon.offset+"("+twoSon.sons.size()+")");
 				if(oneSon.sons.size()>1)
 					oneSon = oneSon.findConvergence();
 				else if(oneSon.sons.size()==1)
@@ -167,11 +161,11 @@ public class Node {
 	
 	public static Node createFromAbc(String[] lines) {
 		Node realRoot = new Node("Begin", -1);
-		buildFromAbc(lines, 0, realRoot);
+		buildFromAbc(lines, 0, realRoot, new ArrayList<Integer>());
 		return realRoot;
 	}
 	
-	public static void buildFromAbc(String[] lines, int initialOffset, Node currentRoot) {
+	public static void buildFromAbc(String[] lines, int initialOffset, Node currentRoot, List<Integer> branchesEncountered) {
 		Node son = new Node(lines[initialOffset], initialOffset);
 		currentRoot.addSon(son);
 		if(initialOffset >= lines.length || isOperator(lines[initialOffset], returnOperators)) {
@@ -180,21 +174,21 @@ public class Node {
 		}
 		else {
 			List<Integer> nextOffsets = getNextOffsets(lines, initialOffset);
-			if(nextOffsets.size()>1) {
+			if(nextOffsets.size()>1 && !branchesEncountered.contains(initialOffset)) {
+				branchesEncountered.add(initialOffset);
+				List<Integer> newBranchesEncountered = new ArrayList<Integer>();
+				for(Integer i : branchesEncountered) {
+					newBranchesEncountered.add(new Integer(i));
+				}
 				int oneWayOffset = nextOffsets.get(0);
-				int twoWayOffset = nextOffsets.get(1);
-				/*Node oneSon = new Node(lines[oneWayOffset]);
-				Node twoSon = new Node(lines[twoWayOffset]);
-				currentRoot.addSon(oneSon);
-				currentRoot.addSon(twoSon);*/
-
-				buildFromAbc(lines, oneWayOffset, son);
-				buildFromAbc(lines, twoWayOffset, son);
-
+				int twoWayOffset = nextOffsets.get(1);	
+				buildFromAbc(lines, oneWayOffset, son, branchesEncountered);
+				buildFromAbc(lines, twoWayOffset, son, newBranchesEncountered);
 			}
 			else {
+				// Fucking loop already visited or direct path
 				int nextOffset = nextOffsets.get(0);
-				buildFromAbc(lines, nextOffset, son);
+				buildFromAbc(lines, nextOffset, son, branchesEncountered);
 			}
 		}
 	}
