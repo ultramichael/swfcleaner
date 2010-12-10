@@ -6,6 +6,8 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
+import adobe.abc.GlobalOptimizer;
+
 import macromedia.abc.BytecodeBuffer;
 import macromedia.abc.Decoder;
 import macromedia.abc.DecoderException;
@@ -25,9 +27,9 @@ public class DeobfuscationTagHandler extends TagHandler {
 			TagDecoder t = new TagDecoder(input, fileUrl);
 			t.parse(this);
 			return this.methods;
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
+		} catch (Exception e) {
+			//e.printStackTrace();
+			return this.methods;
 		}
 	}
 
@@ -56,6 +58,15 @@ public class DeobfuscationTagHandler extends TagHandler {
 		if(l.methods != null) {
 			for(MethodInfo m : l.methods) {
 				methods.put('<'+m.getClassName()+">"+m.getName(), l.methodBodiesStrings.get(m));
+				
+				/*byte[] methodCode = l.methodBodies.get(m);
+				
+				try {
+					GlobalOptimizer.optimize(methodCode, null, null, null);
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}*/
 				/*String body = "";
 				for(byte b : l.methodBodies.get(m))
 					body += Integer.toHexString(Integer.parseInt(Byte.toString(b)) + 128) + " ";

@@ -83,7 +83,7 @@ public class MenuBarComponent extends JMenuBar {
 	
 	private void loadFile2() {
 		try {
-			URL url = Bytecode2Src.class.getClass().getResource("/fr/epsi/csii3/secu/resources/Tetris.swf");
+			URL url = Bytecode2Src.class.getClass().getResource("/fr/epsi/csii3/secu/resources/Tetris_Obfuscated.swf");
 			MainFrame.loadData(new DeobfuscationTagHandler().parseSwf(url));
 		} catch (Exception e) {
 			e.printStackTrace();
