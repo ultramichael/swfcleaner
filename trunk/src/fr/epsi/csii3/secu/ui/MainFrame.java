@@ -15,6 +15,7 @@ import fr.epsi.csii3.secu.ui.listeners.DataLoadedListener;
 import fr.epsi.csii3.secu.ui.menubar.MenuBarComponent;
 import fr.epsi.csii3.secu.ui.text.TextController;
 import fr.epsi.csii3.secu.ui.text.TextControllerLeft;
+import fr.epsi.csii3.secu.ui.text.TextControllerRight;
 import fr.epsi.csii3.secu.ui.tree.TreeController;
 
 @SuppressWarnings("serial")
@@ -43,9 +44,10 @@ public class MainFrame extends JFrame {
 		
 		// TODO : stuff like treeMenu.addABCListener(left)
 		left = new TextControllerLeft();
-		currentMethodListeners.add((CurrentMethodChangedListener) left);
+		right = new TextControllerRight();
 		
-		right = new TextController();
+		currentMethodListeners.add((CurrentMethodChangedListener) left);
+		currentMethodListeners.add((CurrentMethodChangedListener) right);
 
 		
 		JPanel texts = new JPanel();

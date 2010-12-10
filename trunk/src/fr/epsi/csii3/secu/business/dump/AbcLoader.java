@@ -10,7 +10,6 @@ package fr.epsi.csii3.secu.business.dump;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.HashMap;

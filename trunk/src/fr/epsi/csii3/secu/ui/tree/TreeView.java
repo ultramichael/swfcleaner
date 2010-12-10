@@ -7,6 +7,7 @@ import javax.swing.tree.DefaultTreeModel;
 
 import fr.epsi.csii3.secu.ui.generic.AbstractView;
 
+@SuppressWarnings("serial")
 public class TreeView extends AbstractView {
 	private JTree tree;
 	
