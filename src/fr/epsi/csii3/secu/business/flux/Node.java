@@ -1,7 +1,9 @@
 package fr.epsi.csii3.secu.business.flux;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import adobe.abc.GlobalOptimizer;
 
@@ -26,8 +28,8 @@ public class Node {
 			if(line.contains("iffalse")) {
 				sons.remove(1);
 			}
-			/*else if(line.contains("iftrue"))
-				sons.remove(0);*/
+			else if(line.contains("iftrue"))
+				sons.remove(0);
 
 			if(sons.size()<=1)
 				line = "";
@@ -45,12 +47,47 @@ public class Node {
 	
 	public Node toSyntheticTree() {
 		this.simplify();
-		Node syntheticTreeRoot = new Node(this.line, this.offset);
-		//this.recursiveSyntheticTree(syntheticTreeRoot);
-		while(syntheticTreeRoot.sons.size()>0) {
-			
+		syntheticRoot = new Node(this.line, this.offset);
+		syntheticNodes = new ArrayList<Node>();
+		syntheticNodes.add(syntheticRoot);
+		this.buildSynthetic(null);
+		//System.out.println("Done : "+syntheticRoot.sons.get(0).sons.size());
+		return syntheticRoot;
+	}
+	
+	private Node buildSynthetic(Node stop) {
+		if(this.sons.size()==0) {
+			// Nothing to do
+			return null;
 		}
-		return syntheticTreeRoot;
+		else if(this.sons.size()==1) {
+			Node son = this.sons.get(0);
+			if(!son.equals(stop)) {
+				//this.addSon(son);
+				addSonTo(this, son);
+				son.buildSynthetic(stop);
+				// TODO : null ?
+				return this;
+			}
+			else {
+				return this;
+			}
+		}
+		else {
+			Node cv = findConvergence();
+			List<Node> lasts = new ArrayList<Node>();
+			for(Node son : this.sons) {
+				//this.addSon(son);
+				addSonTo(this, son);
+				if(!son.equals(cv))
+					lasts.add(son.buildSynthetic(cv));
+			}
+			for(Node l : lasts) {
+				//l.addSon(cv);
+				addSonTo(l, cv);
+			}
+			return cv;
+		}
 	}
 	
 	/*private void recursiveSyntheticTree(Node syntheticTreeRoot, List<Node> path) {
@@ -96,6 +133,23 @@ public class Node {
 	}*/
 	
 
+	private static Node syntheticRoot;
+	private static List<Node> syntheticNodes;
+	private static void addSonTo(Node n, Node s) {
+		//System.out.println("Add son "+s.line+" to "+n.line+" ("+syntheticRoot.line+")");
+		Node newSon = new Node(s.line, s.offset);
+		syntheticNodes.add(newSon);
+		for(Node node : syntheticNodes) {
+			if(n.equals(node)) {
+				node.addSon(newSon);
+				return;
+			}
+		}
+		Node newFather = new Node(n.line, n.offset);
+		syntheticNodes.add(newFather);
+		newFather.addSon(newSon);
+	}
+	
 	
 	
 	private Node findConvergence() {
