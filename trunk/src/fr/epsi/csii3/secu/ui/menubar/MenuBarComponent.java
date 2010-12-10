@@ -2,15 +2,7 @@ package fr.epsi.csii3.secu.ui.menubar;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.net.URL;
 
 import javax.swing.JFileChooser;
@@ -18,8 +10,8 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 
-import flash.swf.tools.SwfxPrinter;
-import fr.epsi.csii3.secu.Bytecode2Src;
+import fr.epsi.csii3.secu.business.dump.DeobfuscationTagHandler;
+import fr.epsi.csii3.secu.ui.MainFrame;
 
 @SuppressWarnings("serial")
 public class MenuBarComponent extends JMenuBar {
@@ -46,29 +38,8 @@ public class MenuBarComponent extends JMenuBar {
 	
 	private void loadFile(File f) {
 		try {
-			OutputStream out = new FileOutputStream(new File("C:\\dump.txt"));
-			//OutputStream out = System.out;
-			URL url = Bytecode2Src.class.getClass().getResource("/fr/epsi/csii3/secu/resources/Tetris.swf");
-			
-			String tmpFilename = "tmp.disass";
-			SwfxPrinter.main(new String[] {"-abc", "-out", tmpFilename, url.getPath()});
-			File tmpFile = new File(tmpFilename);
-			tmpFile.deleteOnExit();
-			InputStream tmpStream = new FileInputStream(tmpFile);
-			BufferedReader tmpReader = new BufferedReader(new InputStreamReader(tmpStream));
-			String disass = new String("");
-			String line = null;
-			while((line = tmpReader.readLine()) != null) {
-				disass += line + "\r\n";
-			}
-			tmpReader.close();
-			tmpStream.close();
-			
-			BufferedWriter outWriter = new BufferedWriter(new OutputStreamWriter(out));
-			outWriter.write(disass);
-			outWriter.flush();
-			outWriter.close();
-			out.close();
+			URL url = f.toURI().toURL();
+			MainFrame.loadData(new DeobfuscationTagHandler().parseSwf(url));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

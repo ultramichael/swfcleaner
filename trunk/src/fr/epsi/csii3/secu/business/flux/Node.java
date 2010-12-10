@@ -1,11 +1,7 @@
 package fr.epsi.csii3.secu.business.flux;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import adobe.abc.GlobalOptimizer;
 
 public class Node {
 	private List<Node> sons;
