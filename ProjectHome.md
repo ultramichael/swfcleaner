@@ -1,0 +1,1 @@
+A student project designed to clean out every swf obfuscation protection and provide some decompilation features.
